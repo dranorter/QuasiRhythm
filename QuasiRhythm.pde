@@ -102,7 +102,10 @@ void setup() {
   }
   
   // Trying to find a good transform for drbeat subdivision
-  // Just splitting up the largest interval for now
+  // TOOD - define beads here which play the subdivided interval.
+  // That makes for better abstraction and I should be able to choose a
+  // random but consistent order for the sub-intervals that way. (It would
+  // be a bit better if I'd check whether there's some principle to that.)
   if (traj.x >= traj.y || traj.x >= traj.z) {
     drbeat_x = new PVector(1, -1, 0);
     PVector other_option = new PVector(1,0,-1);
@@ -388,6 +391,29 @@ void setup() {
       } else {
         arc.add(traj.copy().mult(distz));
         intervalLength = traj.z;
+        
+        // Play dr beat subdivisions
+        if (drbeat_z.mag() > 1) {
+          if (drbeat_z.x < 0) {
+            // First play the drbeat_z interval, then the x interval
+            ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*(traj.z - traj.x)-existing_note,drbeat_play);
+            // Now subdivide the x interval if possible. We know we won't get another z.
+            if (drbeat_x.y < 0) {
+              // First play the drbeat_x interval, then the y interval
+              ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*(traj.x - traj.y)-existing_note,drbeat_play);
+              ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*traj.y-existing_note,drbeat_play);
+            }
+          } else if (drbeat_z.y < 0) {
+            // First play the drbeat_z interval, then the x interval
+            ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*(traj.z - traj.x)-existing_note,drbeat_play);
+            // Now subdivide the x interval if possible. We know we won't get another z.
+            if (drbeat_z.y < 0) {
+              // First play the drbeat_z interval, then the y interval
+              ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*(traj.z - traj.y)-existing_note,drbeat_play);
+              ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*traj.y-existing_note,drbeat_play);
+            }
+          }
+        }
       }
       
       // Only need arc's value mod integers
@@ -407,8 +433,8 @@ void setup() {
   ((Envelope)m.getGainUGen()).addSegment(0,100,melody_nextInterval);
   ((Envelope)m2.getGainUGen()).addSegment(0,100,melody2_nextInterval);
   g.addInput(noise);
-  //ac.out.addInput(m);
-  //ac.out.addInput(m2);
+  ac.out.addInput(m);
+  ac.out.addInput(m2);
   ac.out.addInput(g);
   ac.out.addInput(drb);
   ac.start();
