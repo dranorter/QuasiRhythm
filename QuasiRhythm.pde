@@ -103,13 +103,39 @@ void setup() {
   
   // Trying to find a good transform for drbeat subdivision
   // Just splitting up the largest interval for now
-  //if (traj.x >= traj.y && traj.x >= traj.z) {
-  //  drbeat_x = new PVector(1, -1, -1);
-  //} else if (traj.y >= traj.x && traj.y >= traj.z) {
-    
-  //} else {
-    
-  //}
+  if (traj.x >= traj.y || traj.x >= traj.z) {
+    drbeat_x = new PVector(1, -1, 0);
+    PVector other_option = new PVector(1,0,-1);
+    if (drbeat_x.dot(traj) < 0 || (random(0,1) > 0.5 && other_option.dot(traj) > 0) ) {
+      drbeat_x = other_option;
+    }
+    if (drbeat_x.dot(traj) <0) {
+      println("Something went wrong determining drbeat_x");
+      drbeat_x = new PVector(1,0,0);
+    }
+  }
+  if (traj.y >= traj.x || traj.y >= traj.z) {
+    drbeat_y = new PVector(-1, 1, 0);
+    PVector other_option = new PVector(0,1,-1);
+    if (drbeat_y.dot(traj) < 0 || (random(0,1) > 0.5 && other_option.dot(traj) > 0) ) {
+      drbeat_y = other_option;
+    }
+    if (drbeat_y.dot(traj) <0) {
+      println("Something went wrong determining drbeat_y");
+      drbeat_y = new PVector(0,1,0);
+    }
+  }
+  if (traj.z >= traj.x || traj.z >= traj.y) {
+    drbeat_z = new PVector(-1,0,1);
+    PVector other_option = new PVector(0,-1,1);
+    if (drbeat_z.dot(traj) < 0 || (random(0,1) > 0.5 && other_option.dot(traj) > 0) ) {
+      drbeat_z = other_option;
+    }
+    if (drbeat_z.dot(traj) <0) {
+      println("Something went wrong determining drbeat_z");
+      drbeat_z = new PVector(1,0,0);
+    }
+  }
 
   Noise noise = new Noise(ac);
   
@@ -296,6 +322,7 @@ void setup() {
       float intervalLength = 1.0;
       
       ((Envelope)drb.getGainUGen()).addSegment(1,1,drbeat_play);
+      int existing_note = 1 + round(0.07*notelength);
       //((Envelope)drb.getGainUGen()).addSegment(1,100,drbeat_play);
       
       // Step arc up to the next transition,
@@ -308,9 +335,56 @@ void setup() {
         ((Envelope)env.getGainUGen()).addSegment(0.1, 0.02*notelength);
         ((Envelope)env.getGainUGen()).addSegment(0, 0.5*notelength);
         
+        // Play dr beat subdivisions
+        if (drbeat_x.mag() > 1) {
+          if (drbeat_x.y < 0) {
+            // First play the drbeat_x interval, then the y interval
+            // Order could be opposite, but has to be consistent
+            // We subtract the length of the dr_beat note that already played
+            ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*(traj.x - traj.y)-existing_note,drbeat_play);
+            // Now subdivide the y interval if possible. We know we won't get another x.
+            if (drbeat_y.z < 0) {
+              // First play the drbeat_y interval, then the z interval
+              ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*(traj.y - traj.z)-existing_note,drbeat_play);
+              ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*traj.z-existing_note,drbeat_play);
+            }
+          } else if (drbeat_x.z < 0) {
+            // First play the drbeat_x interval, then the z interval
+            ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*(traj.x - traj.z)-existing_note,drbeat_play);
+            // Now subdivide the z interval if possible. We know we won't get another y.
+            if (drbeat_z.x < 0) {
+              // First play the drbeat_z interval, then the x interval
+              ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*(traj.z - traj.x)-existing_note,drbeat_play);
+              ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*traj.x-existing_note,drbeat_play);
+            }
+          }
+        }
       } else if (disty <= distx && disty <= distz) {
         arc.add(traj.copy().mult(disty));
         intervalLength = traj.y;
+        
+        // Play dr beat subdivisions
+        if (drbeat_y.mag() > 1) {
+          if (drbeat_y.x < 0) {
+            // First play the drbeat_y interval, then the x interval
+            ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*(traj.y - traj.x)-existing_note,drbeat_play);
+            // Now subdivide the x interval if possible. We know we won't get another y.
+            if (drbeat_x.z < 0) {
+              // First play the drbeat_x interval, then the z interval
+              ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*(traj.x - traj.z)-existing_note,drbeat_play);
+              ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*traj.z-existing_note,drbeat_play);
+            }
+          } else if (drbeat_y.z < 0) {
+            // First play the drbeat_y interval, then the z interval
+            ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*(traj.y - traj.z)-existing_note,drbeat_play);
+            // Now subdivide the z interval if possible. We know we won't get another y.
+            if (drbeat_z.x < 0) {
+              // First play the drbeat_z interval, then the x interval
+              ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*(traj.z - traj.x)-existing_note,drbeat_play);
+              ((Envelope)drb.getGainUGen()).addSegment(1,intervalscale*traj.x-existing_note,drbeat_play);
+            }
+          }
+        }
       } else {
         arc.add(traj.copy().mult(distz));
         intervalLength = traj.z;
